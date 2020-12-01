@@ -5,52 +5,28 @@ import com.ibm.wala.util.WalaException;
 
 import java.io.*;
 import java.util.*;
-import java.util.regex.Pattern;
 
 public class Tools {
-
-    public static void readClassFilesIntoAnalysisScope(String rootDir, AnalysisScope scope) throws Exception {
-
-        File file=new File(rootDir);
-        if(!file.exists() || !file.isDirectory()){
-            throw new Exception("文件定位错误");
-        }else{
-            String[] names=file.list();
-            if(names==null){
-                return;
-            }
-            for(String name:names){
-                String fullPath=rootDir.concat("/").concat(name);
-                if(name.endsWith(".class")){
-                    scope.addClassFileToScope(ClassLoaderReference.Application,new File(fullPath));
-                    System.out.println(fullPath);
-                }else{
-                    if(new File(fullPath).isDirectory()){
-                        readClassFilesIntoAnalysisScope(fullPath,scope);
-                    }
-                }
-            }
-        }
-    }
-
     /*
      * 生成.dot文件
      */
-    public static void makeDot(Hashtable<String,Set<String>> table,String projectName,boolean isClass) throws IOException {
-        String path="src/report";
-        File f=new File(path);
-        if(!f.exists()) f.mkdir();
-        path=path.concat("/"+String.format("%s-%s.dot",isClass?"class":"method",projectName));
-        f=new File(path);
-        if(f.exists()) {
+    public static void makeDot(Hashtable<String, Set<String>> table, String projectName, boolean isClass)
+            throws IOException {
+        String path = "src/report";
+        File f = new File(path);
+        if (!f.exists())
+            f.mkdir();
+        path = path.concat("/" + String.format("%s-%s.dot", isClass ? "class" : "method", projectName));
+        f = new File(path);
+        if (f.exists()) {
             f.delete();
             f.createNewFile();
         }
-        BufferedWriter writer=new BufferedWriter(new FileWriter(f));
-        writer.append(String.format("digraph %s_%s {\n",projectName,isClass?"class":"method"));
-        for(String k:table.keySet()){
-            for(String s:table.get(k)){
-                writer.append(String.format("    \"%s\"->\"%s\";\n",s,k));
+        BufferedWriter writer = new BufferedWriter(new FileWriter(f));
+        writer.append(String.format("digraph %s_%s {\n", projectName, isClass ? "class" : "method"));
+        for (String k : table.keySet()) {
+            for (String s : table.get(k)) {
+                writer.append(String.format("    \"%s\"->\"%s\";\n", s, k));
                 writer.flush();
             }
         }
@@ -59,89 +35,43 @@ public class Tools {
         writer.close();
     }
 
-    public static void writeSelectionFile(String dest,Set<String> set) throws IOException {
-        File f=new File(dest);
-        if(f.exists()){
-            f.delete();
-            f.createNewFile();
-        }
-        BufferedWriter writer=new BufferedWriter(new FileWriter(f));
-        for(String s:set){
-            writer.append(s+"\n");
-            writer.flush();
-        }
-        writer.close();
-    }
-
-    public static List<Pattern> readExclusions(File file) throws IOException {
-        List<Pattern> patterns=new ArrayList<Pattern>();
-        BufferedReader reader= new BufferedReader(new FileReader(file));
-        String c;
-        while((c = reader.readLine())!=null){
-            patterns.add(Pattern.compile(c.trim().replace("\\","")));
-        }
-        return patterns;
-    }
 
     public static List<String> readChangeInfo(File file) throws IOException {
-        List<String> list=new ArrayList<String>();
-        BufferedReader reader= new BufferedReader(new FileReader(file));
+        List<String> list = new ArrayList<String>();
+        BufferedReader reader = new BufferedReader(new FileReader(file));
         String c;
-        while((c = reader.readLine())!=null){
+        while ((c = reader.readLine()) != null) {
             list.add(c.trim().split(" ")[1]);
         }
         return list;
     }
 
+    // 获取文件
+    public static ArrayList<File> getFiles(String target) {
+        File file = new File(target);
+        String[] paths = file.list();
+        ArrayList<File> result = new ArrayList<File>();
 
-    public static String readScopePath(){
-        try {
-            Properties properties= WalaProperties.loadProperties();
-            return properties.getProperty("scopePath")!=null?properties.getProperty("scopePath"):"scope.txt";
-        } catch (WalaException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public static String readExPath() throws WalaException {
-        try {
-            Properties properties= WalaProperties.loadProperties();
-            return properties.getProperty("exclusionPath")!=null?properties.getProperty("exclusionPath"):"exclusion.txt";
-        } catch (WalaException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    private static String getPropertyByName(String fileName,String propertyName) {
-        Properties properties=new Properties();
-        InputStream inputStream=Object.class.getResourceAsStream("/"+fileName);
-        InputStreamReader reader= null;
-        try {
-            reader = new InputStreamReader(inputStream,"utf8");
-            properties.load(reader);
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (paths == null) {
+            return null;
         }
 
-        return properties.getProperty(propertyName);
-    }
-
-    private static void clearFile(File f){
-        if(f.exists()&&f.isFile()){
-            try {
-                FileWriter writer=new FileWriter(f);
-                writer.write("");
-                writer.flush();
-                writer.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+        for (String path : paths) {
+            File tempFile = new File(target + "/" + path);
+            // 是文件夹，递归
+            if (tempFile.isDirectory()) {
+                ArrayList<File> temp = getFiles(target + "/" + path);
+                if (temp != null) {
+                    result.addAll(temp);
+                }
+            } else {
+                // 取得文件
+                if (path.endsWith(".class")) {
+                    result.add(tempFile);
+                }
             }
         }
+        return result;
     }
-
 
 }
